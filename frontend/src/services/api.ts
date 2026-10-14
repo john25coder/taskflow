@@ -1,4 +1,4 @@
-import type { Task, TaskInput, TaskStatus, TaskType, User } from '../types';
+import type { ProductivitySummary, Task, TaskInput, TaskStatus, TaskType, User } from '../types';
 
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333/api';
 
@@ -37,9 +37,14 @@ export const tasksApi = {
     const params = new URLSearchParams({ status, type, q: query, date });
     return api<{ tasks: Task[] }>(`/tasks?${params}`);
   },
-  create: (input: TaskInput) => api<{ task: Task }>('/tasks', { method: 'POST', body: JSON.stringify(input) }),
-  update: (id: string, input: Partial<TaskInput>) => api<{ task: Task }>(`/tasks/${id}`, {
-    method: 'PATCH', body: JSON.stringify(input)
+  create: (input: TaskInput, completionDate: string) => api<{ task: Task }>('/tasks', {
+    method: 'POST', body: JSON.stringify({ ...input, completionDate })
+  }),
+  update: (id: string, input: Partial<TaskInput>, completionDate: string) => api<{ task: Task }>(`/tasks/${id}`, {
+    method: 'PATCH', body: JSON.stringify({ ...input, completionDate })
+  }),
+  updateChecklistItem: (taskId: string, itemId: string, completed: boolean) => api<{ task: Task }>(`/tasks/${taskId}/checklist/${itemId}`, {
+    method: 'PATCH', body: JSON.stringify({ completed })
   }),
   completeHabit: (id: string, date: string) => api<{ task: Task }>(`/tasks/${id}/habit-completions`, {
     method: 'POST', body: JSON.stringify({ date })
@@ -48,4 +53,11 @@ export const tasksApi = {
     method: 'DELETE'
   }),
   remove: (id: string) => api<void>(`/tasks/${id}`, { method: 'DELETE' })
+};
+
+export const productivityApi = {
+  get: (date: string) => api<{ productivity: ProductivitySummary }>(`/productivity?${new URLSearchParams({ date })}`),
+  updateWeeklyGoal: (weeklyGoal: number) => api<{ productivity: ProductivitySummary }>('/productivity/settings', {
+    method: 'PATCH', body: JSON.stringify({ weeklyGoal })
+  })
 };

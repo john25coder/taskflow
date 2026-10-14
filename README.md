@@ -12,8 +12,15 @@ MVP full-stack criado como projeto de portfólio e aprendizado para uma candidat
 - tarefas isoladas por usuário;
 - criação, listagem, edição e exclusão de tarefas;
 - tipos `Geral`, `Estudo`, `Reunião`, `Trabalho` e `Hábito`;
-- campos próprios por tipo, como links de estudo, participantes, reunião, projeto e área;
+- campos próprios por tipo, como links e tempo de estudo, participantes, horário, pauta, anotações, projeto e área;
+- checklist de estudo com passos editáveis, ordenação, conclusão persistida e barra de progresso;
+- feedback por item, confetes ao finalizar o checklist e celebração ao atingir a meta semanal ou subir de nível;
 - hábitos recorrentes nos dias escolhidos, com conclusão diária registrada sem apagar o histórico;
+- pontuação idempotente por conclusão, com valores diferentes por tipo de tarefa;
+- meta semanal configurável, níveis, sequência de dias produtivos e histórico de conquistas;
+- animação de pontos com respeito à preferência de redução de movimento do navegador;
+- dificuldade baixa, média ou alta para tarefas não recorrentes;
+- mensagens motivadoras locais baseadas em meta, estudos, sequência e tarefas leves pendentes;
 - status `A fazer`, `Em andamento` e `Concluída`;
 - filtro por status, filtro por tipo e busca por título ou descrição;
 - prazo e indicação visual de atraso;
@@ -42,7 +49,8 @@ taskflow/
 │   ├── src/services/        cliente da API
 │   └── src/utils/           funções reutilizáveis
 ├── backend/                  Express + TypeScript
-│   ├── src/routes/          autenticação e tarefas
+│   ├── src/routes/          autenticação, tarefas e produtividade
+│   ├── src/services/        regras de pontuação e metas
 │   ├── src/middleware/      sessão e erros
 │   ├── src/db/              conexão SQLite
 │   ├── migrations/          esquema local versionado
@@ -52,7 +60,13 @@ taskflow/
 
 O navegador envia requisições para a API. A API valida os dados, identifica o usuário pelo cookie de sessão e acessa somente as tarefas daquele usuário. O frontend não consulta o banco diretamente.
 
-Uma tarefa do tipo Hábito funciona como uma rotina, não como uma tarefa concluída para sempre. Os dias da semana ficam na própria tarefa e cada execução é gravada em `habit_completions` com uma data. Essa separação permite calcular futuramente sequência de dias, pontos e metas sem perder o histórico.
+Uma tarefa do tipo Hábito funciona como uma rotina, não como uma tarefa concluída para sempre. Os dias da semana ficam na própria tarefa e cada execução é gravada em `habit_completions` com uma data.
+
+O checklist de estudo fica em `task_checklist_items`. Marcar passos atualiza apenas o progresso; depois de completar todos, o usuário confirma a conclusão da tarefa para receber os 15 pontos. Editar ou reordenar passos preserva seus identificadores e datas de conclusão. Tarefa, checklist e pontuação são atualizados em transações. A listagem carrega os checklists em uma única consulta adicional, evitando uma consulta por cartão.
+
+As celebrações aparecem após ações bem-sucedidas: brilho e check por item, confetes na conclusão do checklist e celebração maior para meta semanal ou nível. Recarregar o painel não repete conquistas. A preferência `prefers-reduced-motion` desativa os confetes e movimentos, mantendo a mensagem visível. Meta diária e pet estão previstos para próximas etapas.
+
+As conquistas ficam em `point_events`. Uma tarefa comum possui uma única chave de pontuação e um hábito possui uma chave por data, impedindo pontos duplicados. Reabrir uma tarefa ou desfazer um hábito remove o evento correspondente. O painel calcula nível, progresso semanal e sequência a partir desse histórico. As mensagens contextuais são geradas localmente com esses dados e com tarefas pendentes de baixa dificuldade, sem exigir uma API de IA.
 
 ## Requisitos
 
@@ -118,9 +132,12 @@ Os resultados efetivamente obtidos nesta entrega, separados das limitações ain
 | GET | `/api/tasks?status=all&type=all&q=&date=AAAA-MM-DD` | listar e filtrar tarefas |
 | POST | `/api/tasks` | criar tarefa |
 | PATCH | `/api/tasks/:id` | editar tarefa |
+| PATCH | `/api/tasks/:id/checklist/:itemId` | marcar ou desmarcar um passo de estudo com `{ "completed": true/false }` |
 | POST | `/api/tasks/:id/habit-completions` | concluir um hábito em uma data |
 | DELETE | `/api/tasks/:id/habit-completions/:date` | desfazer a conclusão diária |
 | DELETE | `/api/tasks/:id` | excluir tarefa |
+| GET | `/api/productivity?date=AAAA-MM-DD` | consultar pontos, nível, meta, sequência, mensagens e histórico |
+| PATCH | `/api/productivity/settings` | alterar a meta semanal |
 
 ## Segurança e limites do MVP
 
@@ -136,10 +153,11 @@ A versão executável usa SQLite para permitir uma demonstração local sem conf
 2. Crie uma conta de demonstração.
 3. Crie tarefas dos tipos Estudo e Reunião e mostre os campos específicos.
 4. Crie um Hábito, escolha os dias e registre a conclusão de hoje.
-5. Use os filtros de tipo e status, edite uma tarefa e exclua outra.
-6. Mostre no código onde a API valida os dados, restringe consultas pelo `user_id` e preserva o histórico em `habit_completions`.
-7. Execute `npm test` e diferencie testes automatizados de uso manual no navegador.
-8. Termine dizendo o que você faria depois: pontuação, metas, resumos, PostgreSQL, CI e implantação.
+5. Conclua uma tarefa e mostre pontos, meta semanal, nível, sequência e histórico.
+6. Use os filtros de tipo e status, edite uma tarefa e exclua outra.
+7. Mostre no código onde a API valida os dados, restringe consultas pelo `user_id` e preserva os históricos em `habit_completions` e `point_events`.
+8. Execute `npm test` e diferencie testes automatizados de uso manual no navegador.
+9. Termine dizendo o que você faria depois: resumos, IA opcional, WhatsApp simulado, PostgreSQL, CI e implantação.
 
 Leia também [docs/GUIA_DE_APRENDIZADO_E_ENTREVISTA.md](docs/GUIA_DE_APRENDIZADO_E_ENTREVISTA.md). Ele explica os conceitos que você precisa dominar para defender o projeto com segurança.
 

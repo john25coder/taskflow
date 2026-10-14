@@ -20,7 +20,13 @@ database.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
   applied_at TEXT NOT NULL
 );`);
 
-for (const migrationId of ['001_initial', '002_task_types_and_habits']) {
+for (const migrationId of [
+  '001_initial',
+  '002_task_types_and_habits',
+  '003_gamification',
+  '004_task_difficulty',
+  '005_study_checklists'
+]) {
   const applied = database.prepare('SELECT id FROM schema_migrations WHERE id = ?').get(migrationId);
   if (applied) continue;
 
@@ -31,6 +37,18 @@ for (const migrationId of ['001_initial', '002_task_types_and_habits']) {
     database.prepare('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)')
       .run(migrationId, new Date().toISOString());
     database.exec('COMMIT;');
+  } catch (error) {
+    database.exec('ROLLBACK;');
+    throw error;
+  }
+}
+
+export function transaction<T>(action: () => T): T {
+  database.exec('BEGIN;');
+  try {
+    const result = action();
+    database.exec('COMMIT;');
+    return result;
   } catch (error) {
     database.exec('ROLLBACK;');
     throw error;
